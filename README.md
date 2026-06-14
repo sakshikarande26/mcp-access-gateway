@@ -23,7 +23,15 @@ identity platform but too exposed to keep sharing static keys.
 
 ## Status
 
-Early development. Building the MVP in steps; see the roadmap.
+Early development. Working toward the first usable release.
+
+- [x] Transparent MCP proxy (stdio)
+- [ ] Agent identity
+- [ ] Audit logging
+- [ ] Policy engine (allow / deny)
+- [ ] Credential vault
+- [ ] Live revocation
+- [ ] Config + validation
 
 ## Roadmap
 

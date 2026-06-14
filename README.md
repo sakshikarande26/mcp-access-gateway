@@ -40,8 +40,9 @@ Early development. Building the MVP in steps; see the roadmap.
 
 ## Running locally
 
-Prerequisites: Docker + Docker Compose (for the full stack), or Node.js 18+ (for
-local gateway iteration).
+Prerequisites: Docker + Docker Compose (for the full stack), or Node.js 20 (for
+local gateway iteration). Node 20 matches the `node:20-alpine` image used in
+Docker and is pinned in `.nvmrc` — run `nvm use` to select it.
 
 ```sh
 # 1. Configure environment

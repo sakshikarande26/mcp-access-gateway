@@ -6,6 +6,21 @@
  * have a single typed source of truth. NOTHING in this step actually connects
  * to Postgres or Redis — these values are parsed and held, not used yet.
  */
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
+
+const require = createRequire(import.meta.url);
+
+/**
+ * Resolve the entry script of the locally-installed filesystem reference server
+ * (node_modules/@modelcontextprotocol/server-filesystem). Used as the default
+ * downstream so the gateway runs the pinned local copy directly — no npx, no
+ * network, no dependence on cwd or PATH.
+ */
+function resolveLocalFilesystemServer(): string {
+  const pkgJson = require.resolve('@modelcontextprotocol/server-filesystem/package.json');
+  return join(dirname(pkgJson), 'dist', 'index.js');
+}
 
 export interface PostgresConfig {
   host: string;
@@ -19,6 +34,16 @@ export interface RedisConfig {
   url: string;
 }
 
+/**
+ * The single downstream MCP server the gateway proxies to (Step 1).
+ * Launched as a stdio subprocess: `command` plus `args`. Later steps add a
+ * pool of multiple downstream servers; for now it is exactly one.
+ */
+export interface DownstreamServerConfig {
+  command: string;
+  args: string[];
+}
+
 export interface Config {
   /** HTTP port the gateway listens on. */
   port: number;
@@ -26,6 +51,8 @@ export interface Config {
   host: string;
   postgres: PostgresConfig;
   redis: RedisConfig;
+  /** Downstream MCP server to proxy to (Step 1, stdio transport). */
+  downstream: DownstreamServerConfig;
 }
 
 function envInt(name: string, fallback: number): number {
@@ -45,6 +72,19 @@ function envString(name: string, fallback: string): string {
   return raw === undefined || raw === '' ? fallback : raw;
 }
 
+/**
+ * Parse a space-separated argument string into an array; empty -> fallback.
+ * The fallback is lazy so it is only computed (and any module resolution it does
+ * only runs) when no override is supplied.
+ */
+function envArgs(name: string, fallback: () => string[]): string[] {
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === '') {
+    return fallback();
+  }
+  return raw.trim().split(/\s+/);
+}
+
 export function loadConfig(): Config {
   return {
     port: envInt('GATEWAY_PORT', 8080),
@@ -58,6 +98,16 @@ export function loadConfig(): Config {
     },
     redis: {
       url: envString('REDIS_URL', 'redis://redis:6379'),
+    },
+    downstream: {
+      // Default: run the locally-installed filesystem reference server directly
+      // with the current Node binary, serving the gateway's working directory
+      // (which always exists, so the demo just works).
+      command: envString('MCP_DOWNSTREAM_COMMAND', process.execPath),
+      args: envArgs('MCP_DOWNSTREAM_ARGS', () => [
+        resolveLocalFilesystemServer(),
+        process.cwd(),
+      ]),
     },
   };
 }

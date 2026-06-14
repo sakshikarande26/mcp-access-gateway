@@ -21,7 +21,7 @@ toward downstream servers, so it drops in without changing agents or tools.
 ## Stack (confirm against package.json before assuming)
 - Language: TypeScript / Node.js (strict mode)
 - Gateway HTTP server: Fastify
-- MCP: @modelcontextprotocol/sdk (added in Step 1, not yet)
+- MCP: @modelcontextprotocol/sdk (added in Step 1 — server + client, stdio transport)
 - Data: Postgres (policy, audit log, credential vault), Redis (cache
   invalidation via pub/sub) — stood up in Step 0, used in later steps
 - Package manager: npm
@@ -60,22 +60,30 @@ toward downstream servers, so it drops in without changing agents or tools.
 - CLAUDE.md — this file (EXISTS)
 - .gitignore — Node template + project extras; covers .env, dist, node_modules (EXISTS)
 - LICENSE — Apache 2.0 (EXISTS)
-- package.json — npm manifest; Fastify runtime dep, tsx/typescript/@types/node dev deps; dev/build/start scripts (EXISTS)
+- package.json — npm manifest; runtime deps fastify + @modelcontextprotocol/sdk + @modelcontextprotocol/server-filesystem; dev/build/start + mcp:stdio scripts (EXISTS)
 - package-lock.json — pinned dependency tree (EXISTS)
 - tsconfig.json — strict TypeScript, ES2022 / NodeNext, emits to dist/ (EXISTS)
-- .env.example — documented placeholders for every env var; real .env is gitignored (EXISTS)
+- .env.example — documented placeholders for every env var incl. downstream MCP server; real .env is gitignored (EXISTS)
 - Dockerfile — multi-stage (build TS, run compiled output on node:20-alpine, non-root) (EXISTS)
 - docker-compose.yml — gateway + postgres + redis; named volume postgres_data; env-driven, no hardcoded secrets (EXISTS)
-- src/index.ts — entrypoint: load config, build server, listen, graceful shutdown (EXISTS)
-- src/config/index.ts — typed env/config loading (port/host/postgres/redis); values held, not yet connected (EXISTS)
+- src/index.ts — HTTP chassis entrypoint: load config, build Fastify server, listen, graceful shutdown (EXISTS)
+- src/config/index.ts — typed env/config loading (port/host/postgres/redis/downstream); values held, only downstream used so far (EXISTS)
 - src/server/index.ts — Fastify instance + route registration; GET /health -> { status: "ok" } (EXISTS)
+- src/mcp/client.ts — downstream-facing MCP client; spawns one downstream server (stdio), pass-through listTools/callTool/list+readResource (EXISTS)
+- src/mcp/server.ts — agent-facing MCP server construction + stdio transport (EXISTS)
+- src/mcp/proxy.ts — router: mirrors downstream capabilities, registers handlers that transparently relay requests (auth/policy/audit seam) (EXISTS)
+- src/mcp/stdio.ts — stdio MCP proxy entrypoint the agent/Inspector spawns; separate process from the HTTP chassis (EXISTS)
 - db/migrations/.gitkeep — placeholder; raw SQL migrations land here in later steps (EXISTS)
 
 ## Commands
 - `npm install` — install dependencies.
-- `npm run dev` — run the gateway locally with hot reload (tsx watch).
+- `npm run dev` — run the HTTP chassis locally with hot reload (tsx watch).
 - `npm run build` — type-check and compile TypeScript to dist/.
-- `npm start` — run the compiled gateway (node dist/index.js).
+- `npm start` — run the compiled HTTP chassis (node dist/index.js).
+- `npm run mcp:stdio:dev` — run the stdio MCP proxy from source (tsx).
+- `npm run mcp:stdio` — run the compiled stdio MCP proxy (node dist/mcp/stdio.js).
+- Inspect the proxy: `npx @modelcontextprotocol/inspector npx tsx src/mcp/stdio.ts`
+  (lists/calls the downstream filesystem server's tools THROUGH the gateway).
 - `docker-compose up --build` — bring up gateway + postgres + redis.
 - Health check: `curl localhost:8080/health` -> 200 `{ "status": "ok" }`.
 - Postgres reachable: `docker-compose exec postgres pg_isready -U gateway -d gateway`.

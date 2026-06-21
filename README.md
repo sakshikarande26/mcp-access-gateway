@@ -37,7 +37,7 @@ Early development. Working toward the first usable release.
 
 | Step | Component | Status |
 |------|-----------|--------|
-| 0 | Chassis (Docker Compose: gateway, Postgres, Redis, health check) | Planned |
+| 0 | Docker Compose: gateway, Postgres, Redis, health check | Planned |
 | 1 | Transparent MCP proxy (no policy) | Planned |
 | 2 | Agent identity | Planned |
 | 3 | Audit logging | Planned |
